@@ -1,20 +1,6 @@
-#!/usr/bin/env python
-#
-# Copyright 2011 Facebook
-#
-# Licensed under the Apache License, Version 2.0 (the "License"); you may
-# not use this file except in compliance with the License. You may obtain
-# a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-# License for the specific language governing permissions and limitations
-# under the License.
+# coding:utf-8
 
-"""Miscellaneous network utility code."""
+"""杂七杂八的网络工具代码"""
 
 from __future__ import absolute_import, division, print_function
 
@@ -32,7 +18,7 @@ from tornado.util import PY3, Configurable, errno_from_exception
 try:
     import ssl
 except ImportError:
-    # ssl is not available on Google App Engine
+    # Google App Engine上SSL是不可用的
     ssl = None
 
 try:
@@ -54,13 +40,14 @@ elif ssl is None:
     ssl_match_hostname = SSLCertificateError = None  # type: ignore
 else:
     import backports.ssl_match_hostname
+
     ssl_match_hostname = backports.ssl_match_hostname.match_hostname
     SSLCertificateError = backports.ssl_match_hostname.CertificateError  # type: ignore
 
 if hasattr(ssl, 'SSLContext'):
     if hasattr(ssl, 'create_default_context'):
         # Python 2.7.9+, 3.4+
-        # Note that the naming of ssl.Purpose is confusing; the purpose
+        # 注意：ssl.Purpose的命名具有迷惑性; the purpose
         # of a context is to authentiate the opposite side of the connection.
         _client_ssl_defaults = ssl.create_default_context(
             ssl.Purpose.SERVER_AUTH)
@@ -156,7 +143,7 @@ def bind_sockets(port, address=None, family=socket.AF_UNSPEC,
                                       0, flags)):
         af, socktype, proto, canonname, sockaddr = res
         if (sys.platform == 'darwin' and address == 'localhost' and
-                af == socket.AF_INET6 and sockaddr[3] != 0):
+                    af == socket.AF_INET6 and sockaddr[3] != 0):
             # Mac OS X includes a link-local address fe80::1%lo0 in the
             # getaddrinfo results for 'localhost'.  However, the firewall
             # doesn't understand that this is a local address and will
@@ -274,6 +261,7 @@ def add_accept_handler(sock, callback, io_loop=None):
                     continue
                 raise
             callback(connection, address)
+
     io_loop.add_handler(sock, accept_handler, IOLoop.READ)
 
 
@@ -316,6 +304,7 @@ class Resolver(Configurable):
     * `tornado.platform.twisted.TwistedResolver`
     * `tornado.platform.caresresolver.CaresResolver`
     """
+
     @classmethod
     def configurable_base(cls):
         return Resolver
@@ -366,6 +355,7 @@ class ExecutorResolver(Resolver):
     .. versionchanged:: 4.1
        The ``io_loop`` argument is deprecated.
     """
+
     def initialize(self, io_loop=None, executor=None, close_executor=True):
         self.io_loop = io_loop or IOLoop.current()
         if executor is not None:
@@ -400,6 +390,7 @@ class BlockingResolver(ExecutorResolver):
     The `.IOLoop` will be blocked during the resolution, although the
     callback will not be run until the next `.IOLoop` iteration.
     """
+
     def initialize(self, io_loop=None):
         super(BlockingResolver, self).initialize(io_loop=io_loop)
 
@@ -450,6 +441,7 @@ class OverrideResolver(Resolver):
 
     The mapping can contain either host strings or host-port pairs.
     """
+
     def initialize(self, resolver, mapping):
         self.resolver = resolver
         self.mapping = mapping
