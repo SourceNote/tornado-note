@@ -1,13 +1,11 @@
-"""Miscellaneous utility functions and classes.
+# coding:utf-8
+"""各种工具函数/类.
 
-This module is used internally by Tornado.  It is not necessarily expected
-that the functions and classes defined here will be useful to other
-applications, but they are documented here in case they are.
+本模块是Tornado在内部使用。不必期望这里定义的函数何磊可以再其他的应用中使用。
 
-The one public-facing part of this module is the `Configurable` class
-and its `~Configurable.configure` method, which becomes a part of the
-interface of its subclasses, including `.AsyncHTTPClient`, `.IOLoop`,
-and `.Resolver`.
+本模块对外公开的部分是`Configurable`类及它的`~Configurable.configure` 方法。
+这部分已经成为它的子类`.AsyncHTTPClient`, `.IOLoop`,和 `.Resolver`接口的一部分
+
 """
 
 from __future__ import absolute_import, division, print_function
@@ -39,10 +37,9 @@ if PY3:
     unicode_type = str
     basestring_type = str
 else:
-    # The names unicode and basestring don't exist in py3 so silence flake8.
+    # unicode 和 basestring 在 py3 不存在，所以默认flake8.
     unicode_type = unicode  # noqa
     basestring_type = basestring  # noqa
-
 
 try:
     import typing  # noqa
@@ -52,10 +49,11 @@ try:
 except ImportError:
     _ObjectDictBase = dict
 
+
     def cast(typ, x):
         return x
 else:
-    # More imports that are only needed in type comments.
+    # 导入在类型注释中需要的部分.
     import datetime  # noqa
     import types  # noqa
     from typing import Any, AnyStr, Union, Optional, Dict, Mapping  # noqa
@@ -66,7 +64,6 @@ else:
     else:
         _BaseString = Union[bytes, unicode_type]
 
-
 try:
     from sys import is_finalizing
 except ImportError:
@@ -76,67 +73,68 @@ except ImportError:
         atexit.register(lambda: L.append(None))
 
         def is_finalizing():
+            # 这里不引用任何全局属性的东西
             # Not referencing any globals here
             return L != []
 
         return is_finalizing
 
+
     is_finalizing = _get_emulated_is_finalizing()
 
 
 class ObjectDict(_ObjectDictBase):
-    """Makes a dictionary behave like an object, with attribute-style access.
+    """使一个字典和对象一样，可以通过属性风格进行访问.
     """
+
     def __getattr__(self, name):
-        # type: (str) -> Any
+        # 类型: (str) -> 任意
         try:
             return self[name]
         except KeyError:
             raise AttributeError(name)
 
     def __setattr__(self, name, value):
-        # type: (str, Any) -> None
+        # 类型: (str, 任意) -> None
         self[name] = value
 
 
 class GzipDecompressor(object):
-    """Streaming gzip decompressor.
+    """流gzip解压缩.
 
-    The interface is like that of `zlib.decompressobj` (without some of the
-    optional arguments, but it understands gzip headers and checksums.
+    接口类似于 `zlib.decompressobj` (没有一些可选参数，
+     但是他能理解处理gzip的头部和校验和.）
     """
+
     def __init__(self):
-        # Magic parameter makes zlib module understand gzip header
+        # 魔法函数使得 zlib 模块能理解 gzip 头部
         # http://stackoverflow.com/questions/1838699/how-can-i-decompress-a-gzip-stream-with-zlib
-        # This works on cpython and pypy, but not jython.
+        # 在 cpython 和 pypy 中可以工作, 但是jython中不可以.
         self.decompressobj = zlib.decompressobj(16 + zlib.MAX_WBITS)
 
     def decompress(self, value, max_length=None):
-        # type: (bytes, Optional[int]) -> bytes
-        """Decompress a chunk, returning newly-available data.
+        # 类型: (bytes, Optional[int]) -> bytes
+        """解压缩一个chunk, 返回一个新的可用数据
+        一些数据可能会被缓冲以待之后处理;当没有更多数据输入的时候，
+        为了保证所有的数据都被处理，必须要调用`flush`
 
-        Some data may be buffered for later processing; `flush` must
-        be called when there is no more input data to ensure that
-        all data was processed.
-
-        If ``max_length`` is given, some input data may be left over
-        in ``unconsumed_tail``; you must retrieve this value and pass
-        it back to a future call to `decompress` if it is not empty.
+        如果提供了 ``max_length`` , 一些输入数据可能会被遗留在 ``unconsumed_tail``;
+        你必须遍历这个数据并将其传递给一个之后要调用的函数，若其非空，就进行解压操作
         """
         return self.decompressobj.decompress(value, max_length)
 
     @property
     def unconsumed_tail(self):
-        # type: () -> bytes
-        """Returns the unconsumed portion left over
+        # 类型: () -> bytes
+        """返回遗留下来的未被处理消耗尽的部分
         """
         return self.decompressobj.unconsumed_tail
 
     def flush(self):
-        # type: () -> bytes
+        # 类型: () -> bytes
         """Return any remaining buffered data not yet returned by decompress.
 
-        Also checks for errors such as truncated input.
+        同时检查如输入被删节的错误
         No other methods may be called on this object after `flush`.
         """
         return self.decompressobj.flush()
@@ -144,10 +142,10 @@ class GzipDecompressor(object):
 
 def import_object(name):
     # type: (_BaseString) -> Any
-    """Imports an object by name.
+    """通过名字导入一个对象.
 
-    import_object('x') is equivalent to 'import x'.
-    import_object('x.y.z') is equivalent to 'from x.y import z'.
+    import_object('x') 等同于 'import x'.
+    import_object('x.y.z') 等同于 'from x.y import z'.
 
     >>> import tornado.escape
     >>> import_object('tornado.escape') is tornado.escape
@@ -162,7 +160,7 @@ def import_object(name):
     ImportError: No module named missing_module
     """
     if not isinstance(name, str):
-        # on python 2 a byte string is required.
+        # python 2 需要一个 byte 字符串
         name = name.encode('utf-8')
     if name.count('.') == 0:
         return __import__(name, None, None)
@@ -175,23 +173,22 @@ def import_object(name):
         raise ImportError("No module named %s" % parts[-1])
 
 
-# Stubs to make mypy happy (and later for actual type-checking).
+# 占位 (稍后进行真正的类型检查).
 def raise_exc_info(exc_info):
-    # type: (Tuple[type, BaseException, types.TracebackType]) -> None
+    # 类型: (Tuple[type, BaseException, types.TracebackType]) -> None
     pass
 
 
 def exec_in(code, glob, loc=None):
-    # type: (Any, Dict[str, Any], Optional[Mapping[str, Any]]) -> Any
+    # 类型: (任意, Dict[str, 任意], 可选[Mapping[str, 任意]]) -> 任意
     if isinstance(code, basestring_type):
-        # exec(string) inherits the caller's future imports; compile
-        # the string first to prevent that.
+        # exec(string) 继承调用者的future imports; 先编译字符串来阻止它
         code = compile(code, '<string>', 'exec', dont_inherit=True)
-    exec(code, glob, loc)
+    exec (code, glob, loc)
 
 
 if PY3:
-    exec("""
+    exec ("""
 def raise_exc_info(exc_info):
     try:
         raise exc_info[1].with_traceback(exc_info[2])
@@ -200,15 +197,15 @@ def raise_exc_info(exc_info):
 
 """)
 else:
-    exec("""
+    exec ("""
 def raise_exc_info(exc_info):
     raise exc_info[0], exc_info[1], exc_info[2]
 """)
 
 
 def errno_from_exception(e):
-    # type: (BaseException) -> Optional[int]
-    """Provides the errno from an Exception object.
+    # 类型: (BaseException) -> 可选[int]
+    """提供异常对象的错误代码.
 
     There are cases that the errno attribute was not set so we pull
     the errno out of the args but if someone instantiates an Exception
@@ -225,15 +222,16 @@ def errno_from_exception(e):
         return None
 
 
+# Tacey：将字串转为不可变集合
 _alphanum = frozenset(
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
 
 def _re_unescape_replacement(match):
-    # type: (Match[str]) -> str
+    # 类型: (Match[str]) -> str
     group = match.group(1)
     if group[0] in _alphanum:
-        raise ValueError("cannot unescape '\\\\%s'" % group[0])
+        raise ValueError("不能反转义 '\\\\%s'" % group[0])
     return group
 
 
@@ -241,8 +239,8 @@ _re_unescape_pattern = re.compile(r'\\(.)', re.DOTALL)
 
 
 def re_unescape(s):
-    # type: (str) -> str
-    """Unescape a string escaped by `re.escape`.
+    # 类型: (str) -> str
+    """反转义`re.escape`转义的字符串.
 
     May raise ``ValueError`` for regular expressions which could not
     have been produced by `re.escape` (for example, strings containing
@@ -254,7 +252,7 @@ def re_unescape(s):
 
 
 class Configurable(object):
-    """Base class for configurable interfaces.
+    """可配置接口基类.
 
     A configurable interface is an (abstract) class whose constructor
     acts as a factory function for one of its implementation subclasses.
@@ -362,19 +360,20 @@ class Configurable(object):
 
 
 class ArgReplacer(object):
-    """Replaces one value in an ``args, kwargs`` pair.
+    """替换``args, kwargs`` 对的值.
 
     Inspects the function signature to find an argument by name
     whether it is passed by position or keyword.  For use in decorators
     and similar wrappers.
     """
+
     def __init__(self, func, name):
         # type: (Callable, str) -> None
         self.name = name
         try:
             self.arg_pos = self._getargnames(func).index(name)
         except ValueError:
-            # Not a positional parameter
+            # 不是一个位置参数
             self.arg_pos = None
 
     def _getargnames(self, func):
@@ -428,38 +427,37 @@ class ArgReplacer(object):
 
 
 def timedelta_to_seconds(td):
-    # type: (datetime.timedelta) -> float
-    """Equivalent to td.total_seconds() (introduced in python 2.7)."""
+    # 类型: (datetime.timedelta) -> float
+    """等同于td.total_seconds() (python 2.7)."""
     return (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10 ** 6) / float(10 ** 6)
 
 
 def _websocket_mask_python(mask, data):
-    # type: (bytes, bytes) -> bytes
-    """Websocket masking function.
+    # 类型: (bytes, bytes) -> bytes
+    """Websocket掩码函数.
 
-    `mask` is a `bytes` object of length 4; `data` is a `bytes` object of any length.
+    `mask` 是一个长度为4的 `bytes`对象 ; `data` 是一个任意长度的 `bytes` 对象.
     Returns a `bytes` object of the same length as `data` with the mask applied
     as specified in section 5.3 of RFC 6455.
 
-    This pure-python implementation may be replaced by an optimized version when available.
+    此纯Python实现版本可以替换为更优化的版本
     """
     mask_arr = array.array("B", mask)
     unmasked_arr = array.array("B", data)
     for i in xrange(len(data)):
         unmasked_arr[i] = unmasked_arr[i] ^ mask_arr[i % 4]
     if PY3:
-        # tostring was deprecated in py32.  It hasn't been removed,
-        # but since we turn on deprecation warnings in our tests
-        # we need to use the right one.
+        # tostring在py32是不提倡的。它现在已经被移除,
+        # 但是由于我们的测试中会提示为不提倡警告
+        # 所以我们要使用正确的那个.
         return unmasked_arr.tobytes()
     else:
         return unmasked_arr.tostring()
 
 
 if (os.environ.get('TORNADO_NO_EXTENSION') or
-        os.environ.get('TORNADO_EXTENSION') == '0'):
-    # These environment variables exist to make it easier to do performance
-    # comparisons; they are not guaranteed to remain supported in the future.
+            os.environ.get('TORNADO_EXTENSION') == '0'):
+    # 这些环境变量的存在便于进行性能对比，不保证将来会对此进行支持.
     _websocket_mask = _websocket_mask_python
 else:
     try:
