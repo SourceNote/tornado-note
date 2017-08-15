@@ -1,3 +1,1 @@
-This directory contains tools and scripts that are used in the development
-and maintainance of Tornado itself, but are probably not of interest to
-Tornado users.
+本目录用于放置开发Tornado本身时所用的工具脚本，Tornado用户也许不会对这些感兴趣
